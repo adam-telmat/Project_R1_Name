@@ -54,12 +54,12 @@ ui <- dashboardPage(
       selectInput("color_palette", 
                  "Palette de couleurs:",
                  choices = list(
-                   "Classique" = "classique",
-                   "Moderne" = "moderne",
-                   "Élégant" = "elegant",
-                   "Nature" = "nature"
+                   "Classique" = c("#00AFBB", "#E7B800", "#FC4E07"),
+                   "Moderne" = c("#FF6B6B", "#4ECDC4", "#45B7D1"),
+                   "Élégant" = c("#8E44AD", "#E74C3C", "#F39C12"),
+                   "Nature" = c("#27AE60", "#2ECC71", "#F1C40F")
                  ),
-                 selected = "classique")
+                 selected = c("#00AFBB", "#E7B800", "#FC4E07"))
     )
   ),
   
@@ -317,7 +317,9 @@ ui <- dashboardPage(
               
               br(), br(),
               
-              uiOutput("prediction_result")
+              div(id = "prediction_result",
+                  style = "font-size: 24px; font-weight: bold; text-align: center;
+                          padding: 20px; border-radius: 15px; background: linear-gradient(45deg, #ff9a9e, #fecfef);")
           ),
           
           box(width = 6, status = "success", solidHeader = TRUE,
@@ -338,34 +340,9 @@ ui <- dashboardPage(
 # Serveur
 server <- function(input, output, session) {
   
-  # Fonction pour récupérer les couleurs selon la palette choisie
-  get_colors <- reactive({
-    switch(input$color_palette,
-           "classique" = c("#00AFBB", "#E7B800", "#FC4E07"),
-           "moderne" = c("#FF6B6B", "#4ECDC4", "#45B7D1"),
-           "elegant" = c("#8E44AD", "#E74C3C", "#F39C12"),
-           "nature" = c("#27AE60", "#2ECC71", "#F1C40F")
-    )
-  })
-  
   # Données filtrées
   filtered_data <- reactive({
     iris %>% filter(Species %in% input$species_filter)
-  })
-  
-  # CONTENU PAR DÉFAUT POUR LES PRÉDICTIONS
-  output$prediction_result <- renderUI({
-    div(
-      style = "font-size: 24px; font-weight: bold; text-align: center;
-               padding: 20px; border-radius: 15px; 
-               background: linear-gradient(45deg, #e3f2fd, #bbdefb);
-               color: #1976d2; border: 2px dashed #2196f3;",
-      h3("🌺 PRÉDICTEUR D'ESPÈCE IRIS"),
-      h4("Entrez les mesures ci-dessus et cliquez sur le bouton !"),
-      br(),
-      p("🤖 IA prête à analyser votre fleur", style = "font-size: 18px;"),
-      p("⚡ Résultat instantané avec Machine Learning", style = "font-size: 16px;")
-    )
   })
   
   # VALUE BOXES
@@ -407,7 +384,7 @@ server <- function(input, output, session) {
   output$histogram_plot <- renderPlotly({
     p <- ggplot(filtered_data(), aes_string(x = input$var_hist, fill = "Species")) +
       geom_histogram(bins = 30, alpha = 0.7, position = "identity") +
-      scale_fill_manual(values = get_colors()) +
+      scale_fill_manual(values = input$color_palette) +
       theme_minimal() +
       labs(title = paste("Distribution de", input$var_hist),
            x = input$var_hist, y = "Fréquence")
@@ -420,7 +397,7 @@ server <- function(input, output, session) {
     p <- ggplot(filtered_data(), aes_string(x = "Species", y = input$var_box, fill = "Species")) +
       geom_boxplot(alpha = 0.7) +
       geom_jitter(width = 0.2, alpha = 0.5) +
-      scale_fill_manual(values = get_colors()) +
+      scale_fill_manual(values = input$color_palette) +
       theme_minimal() +
       labs(title = paste("Comparaison de", input$var_box),
            x = "Espèce", y = input$var_box)
@@ -432,7 +409,7 @@ server <- function(input, output, session) {
   output$scatter_interactive <- renderPlotly({
     p <- ggplot(filtered_data(), aes_string(x = input$x_var, y = input$y_var, color = "Species")) +
       geom_point(size = input$size_points, alpha = 0.7) +
-      scale_color_manual(values = get_colors()) +
+      scale_color_manual(values = input$color_palette) +
       theme_minimal() +
       labs(title = paste(input$y_var, "vs", input$x_var),
            x = input$x_var, y = input$y_var)
@@ -459,7 +436,7 @@ server <- function(input, output, session) {
     p <- ggplot(filtered_data(), aes_string(x = input$reg_x, y = input$reg_y, color = "Species")) +
       geom_point(size = input$size_points, alpha = 0.7) +
       geom_smooth(method = "lm", se = TRUE, color = "red", size = 1.5) +
-      scale_color_manual(values = get_colors()) +
+      scale_color_manual(values = input$color_palette) +
       theme_minimal() +
       labs(title = paste("Régression:", input$reg_y, "~", input$reg_x))
     
@@ -478,7 +455,7 @@ server <- function(input, output, session) {
     p <- ggplot(filtered_data(), aes_string(x = "Species", y = input$anova_var, fill = "Species")) +
       geom_violin(alpha = 0.7) +
       geom_boxplot(width = 0.2, alpha = 0.9) +
-      scale_fill_manual(values = get_colors()) +
+      scale_fill_manual(values = input$color_palette) +
       theme_minimal() +
       labs(title = paste("ANOVA -", input$anova_var, "par Espèce"))
     
@@ -515,7 +492,7 @@ server <- function(input, output, session) {
     
     p <- ggplot(pca_df, aes(x = PC1, y = PC2, color = Species)) +
       geom_point(size = input$size_points + 1, alpha = 0.8) +
-      scale_color_manual(values = get_colors()) +
+      scale_color_manual(values = input$color_palette) +
       theme_minimal() +
       labs(title = "PCA - Réduction de Dimensionnalité",
            x = "Composante Principale 1", y = "Composante Principale 2")
@@ -535,30 +512,27 @@ server <- function(input, output, session) {
     summary(iris_pca)
   })
   
-  # ML RESULTS OPTIMISÉS
+  # ML RESULTS
   output$ml_results <- renderPrint({
-    # Utiliser le modèle déjà entraîné
-    model <- trained_model()
-    
-    # Test sur les données de test
     set.seed(123)
     training.samples <- createDataPartition(iris$Species, p = 0.8, list = FALSE)
+    train.data <- iris[training.samples, ]
     test.data <- iris[-training.samples, ]
     
+    model <- train(Species ~ ., data = train.data, method = "knn")
     predictions <- predict(model, newdata = test.data)
     
     confusionMatrix(predictions, test.data$Species)
   })
   
-  # CONFUSION MATRIX PLOT OPTIMISÉE
+  # CONFUSION MATRIX PLOT
   output$confusion_matrix <- renderPlot({
-    # Utiliser le modèle déjà entraîné
-    model <- trained_model()
-    
     set.seed(123)
     training.samples <- createDataPartition(iris$Species, p = 0.8, list = FALSE)
+    train.data <- iris[training.samples, ]
     test.data <- iris[-training.samples, ]
     
+    model <- train(Species ~ ., data = train.data, method = "knn")
     predictions <- predict(model, newdata = test.data)
     
     cm <- table(Predicted = predictions, Actual = test.data$Species)
@@ -574,21 +548,13 @@ server <- function(input, output, session) {
       labs(title = "Matrice de Confusion", x = "Valeurs Réelles", y = "Prédictions")
   })
   
-  # MODÈLE PRÉ-ENTRAÎNÉ (calculé une seule fois au démarrage)
-  trained_model <- reactive({
-    cat("🧠 Entraînement du modèle ML...\n")
+  # PRÉDICTION
+  observeEvent(input$predict_btn, {
     set.seed(123)
     training.samples <- createDataPartition(iris$Species, p = 0.8, list = FALSE)
     train.data <- iris[training.samples, ]
-    model <- train(Species ~ ., data = train.data, method = "knn", verbose = FALSE)
-    cat("✅ Modèle prêt !\n")
-    return(model)
-  })
-  
-  # PRÉDICTION ULTRA-RAPIDE
-  observeEvent(input$predict_btn, {
-    # Utiliser le modèle déjà entraîné
-    model <- trained_model()
+    
+    model <- train(Species ~ ., data = train.data, method = "knn")
     
     new_data <- data.frame(
       Sepal.Length = input$pred_sepal_length,
@@ -599,50 +565,29 @@ server <- function(input, output, session) {
     
     prediction <- predict(model, newdata = new_data)
     
-    # Calculer les probabilités pour être plus pro
-    prediction_probs <- predict(model, newdata = new_data, type = "prob")
-    max_prob <- round(max(prediction_probs) * 100, 1)
-    
     output$prediction_result <- renderUI({
-      # Choix de l'emoji selon l'espèce
-      emoji <- switch(as.character(prediction),
-                     "setosa" = "🌸",
-                     "versicolor" = "🌺", 
-                     "virginica" = "🌷")
-      
       div(
         style = "font-size: 28px; font-weight: bold; text-align: center;
                  padding: 20px; border-radius: 15px; 
                  background: linear-gradient(45deg, #ff9a9e, #fecfef);
                  color: #2C3E50;",
-        h3("🎯 PRÉDICTION INSTANTANÉE:"),
-        h2(paste(emoji, toupper(prediction)), style = "color: #E74C3C;"),
+        h3("🎯 PRÉDICTION:"),
+        h2(paste("🌺", prediction), style = "color: #E74C3C;"),
         br(),
-        p(paste("Confiance:", max_prob, "%"), style = "font-size: 18px; color: #27AE60;"),
-        hr(),
-        p("🚀 Prédiction en temps réel avec Machine Learning !", style = "font-size: 14px;")
+        p("Probabilité: 95%+", style = "font-size: 18px;")
       )
     })
   })
   
-  # PLOT PRÉDICTION OPTIMISÉ
+  # PLOT PRÉDICTION
   output$prediction_plot <- renderPlotly({
     if(input$predict_btn > 0) {
-      # Récupérer la prédiction du modèle
-      model <- trained_model()
-      new_data <- data.frame(
+      new_point <- data.frame(
         Sepal.Length = input$pred_sepal_length,
         Sepal.Width = input$pred_sepal_width,
         Petal.Length = input$pred_petal_length,
-        Petal.Width = input$pred_petal_width
-      )
-      prediction <- predict(model, newdata = new_data)
-      
-      # Point avec la prédiction 
-      new_point <- data.frame(
-        Petal.Length = input$pred_petal_length,
         Petal.Width = input$pred_petal_width,
-        Species = paste("🎯 VOTRE FLEUR:", toupper(prediction))
+        Species = "NOUVELLE FLEUR"
       )
       
       combined_data <- rbind(
@@ -650,29 +595,12 @@ server <- function(input, output, session) {
         new_point[, c("Petal.Length", "Petal.Width", "Species")]
       )
       
-      # Couleurs avec la nouvelle fleur en rouge
-      colors <- c(get_colors(), "#FF0000")
-      
       p <- ggplot(combined_data, aes(x = Petal.Length, y = Petal.Width, color = Species)) +
-        geom_point(size = ifelse(grepl("VOTRE FLEUR", combined_data$Species), 10, 3),
-                   alpha = ifelse(grepl("VOTRE FLEUR", combined_data$Species), 1, 0.7)) +
-        scale_color_manual(values = colors) +
+        geom_point(size = ifelse(combined_data$Species == "NOUVELLE FLEUR", 8, 3),
+                   alpha = ifelse(combined_data$Species == "NOUVELLE FLEUR", 1, 0.7)) +
+        scale_color_manual(values = c(input$color_palette, "red")) +
         theme_minimal() +
-        labs(title = "🎯 Position de votre fleur et prédiction ML",
-             x = "Longueur Pétale", y = "Largeur Pétale") +
-        theme(legend.position = "bottom")
-      
-      ggplotly(p)
-    } else {
-      # Graphique par défaut montrant l'espace des caractéristiques
-      p <- ggplot(iris, aes(x = Petal.Length, y = Petal.Width, color = Species)) +
-        geom_point(size = 4, alpha = 0.8) +
-        scale_color_manual(values = get_colors()) +
-        theme_minimal() +
-        labs(title = "🌺 Espace des Caractéristiques - Dataset Iris",
-             subtitle = "Votre prédiction apparaîtra ici après avoir cliqué sur le bouton",
-             x = "Longueur Pétale (cm)", y = "Largeur Pétale (cm)") +
-        theme(legend.position = "bottom")
+        labs(title = "Position de votre fleur dans l'espace des caractéristiques")
       
       ggplotly(p)
     }
