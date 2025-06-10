@@ -1,0 +1,14 @@
+{
+    "r.rterm.windows": "C:\\Program Files\\R\\R-4.5.0\\bin\\R.exe",
+    "r.rpath.windows": "C:\\Program Files\\R\\R-4.5.0\\bin\\R.exe",
+    "r.bracketedPaste": true,
+    "r.sessionWatcher": true,
+    "r.rtermSendDelay": 8,
+    "r.alwaysUseActiveTerminal": true,
+    "r.shiny.devMode": true,
+    "r.shiny.autoReload": true,
+    "files.associations": {
+        "*.R": "r",
+        "*.r": "r"
+    }
+} 
